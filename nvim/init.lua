@@ -49,61 +49,74 @@ vim.cmd.colorscheme "catppuccin"
 
 -- Indentation settings
 vim.opt.expandtab = false
-vim.opt.shiftwidth = 4
 vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
 vim.opt.softtabstop = 4
 vim.opt.smartindent = true
+vim.opt.autoindent = true
+vim.opt.cindent = true
+vim.opt.smarttab = true
 
 -- File explorer setup
 require('nvim-tree').setup({
-    git = {
-        ignore = false,
-    }
+    git = { ignore = false, }
 })
-vim.api.nvim_set_keymap('n', '<leader>e', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
 
 -- Auto-save setup
 require('auto-save').setup {}
 
+-- Treesitter setup
+require'nvim-treesitter.configs'.setup {
+    ensure_installed = "all",
+    highlight = { 
+		enable = true, 
+		additional_vim_regex_highlighting = false,
+	},
+    indent = { enable = true },
+}
+
 -- LSP configuration
 local lspconfig = require('lspconfig')
+local capabilities = require('cmp_nvim_lsp').default_capabilities()
 
-lspconfig.intelephense.setup {}
+-- PHP (Intelephense)
+lspconfig.intelephense.setup {
+    capabilities = capabilities,
+    settings = { intelephense = { files = { maxSize = 5000000 }, }, },
+}
 
+-- Go (gopls)
 lspconfig.gopls.setup {
+    capabilities = capabilities,
     cmd = {"gopls"},
-    capabilities = require('cmp_nvim_lsp').default_capabilities(),
-    settings = {
-        gopls = {
-            gofumpt = true,
-            staticcheck = true,
-            usePlaceholders = true,
-            analyses = {
-                unusedparams = true,
-                shadow = true,
-            },
-            completeUnimported = true,
-        }
-    }
+    settings = { gopls = { gofumpt = true, staticcheck = true, usePlaceholders = true,
+        analyses = { unusedparams = true, shadow = true, unusedwrite = true, },
+        completeUnimported = true,
+    }},
+}
+
+-- Python (pylsp)
+lspconfig.pylsp.setup {
+    capabilities = capabilities,
+    settings = { pylsp = { plugins = {
+        flake8 = { enabled = true }, black = { enabled = true }, isort = { enabled = true },
+        pycodestyle = { enabled = false }, mccabe = { enabled = false }, pyflakes = { enabled = false },
+    }}},
 }
 
 -- Auto-format on save
 vim.cmd [[
-  autocmd BufWritePre *.php execute ':silent! !php-cs-fixer fix %' | edit
-  autocmd BufWritePre *.go lua vim.lsp.buf.format()
+  autocmd BufWritePre *.php lua vim.lsp.buf.format({ async = false })
+  autocmd BufWritePre *.go lua vim.lsp.buf.format({ async = false })
+  autocmd BufWritePre *.py lua vim.lsp.buf.format({ async = false })
 ]]
 
 -- Autocompletion setup
 local cmp = require'cmp'
-
 cmp.setup({
-    snippet = {
-        expand = function(args)
-            require('luasnip').lsp_expand(args.body)
-        end,
-    },
+    snippet = { expand = function(args) require('luasnip').lsp_expand(args.body) end },
     mapping = {
-        ['<M-Space>'] = cmp.mapping.complete(),
+        -- ['<M-Space>'] = cmp.mapping.complete(),
         ['<CR>'] = cmp.mapping.confirm({ select = true }),
         ['<Tab>'] = cmp.mapping.select_next_item(),
         ['<S-Tab>'] = cmp.mapping.select_prev_item(),
@@ -114,40 +127,23 @@ cmp.setup({
     })
 })
 
--- Code actions shortcut
-vim.api.nvim_set_keymap('n', '<leader>i', '<cmd>lua vim.lsp.buf.code_action()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>e', ':NvimTreeToggle<CR>', { noremap = true, silent = true })
 
--- Center screen after moving
+vim.api.nvim_set_keymap('n', '<leader>b', '<cmd>vsplit<CR><cmd>lua vim.lsp.buf.definition()<CR><cmd>wincmd p<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>k', '<cmd>lua vim.lsp.buf.hover()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>r', '<cmd>lua vim.lsp.buf.rename()<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>a', '<cmd>lua vim.lsp.buf.code_action()<CR>', { noremap = true, silent = true })
+
 vim.api.nvim_set_keymap('n', 'j', 'jzz', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', 'k', 'kzz', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', 'h', 'hzz', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', 'l', 'lzz', { noremap = true, silent = true })
 
 -- Enable devicons
-require('nvim-web-devicons').setup({
-    default = true,
-    override = {
-        zsh = { icon = "", color = "#428850", name = "Zsh" },
-    },
-})
-
--- Treesitter setup
-require'nvim-treesitter.configs'.setup {
-    ensure_installed = "all",
-    highlight = {
-        enable = true,
-        additional_vim_regex_highlighting = false,
-    },
-}
-
--- Open function definition in vsplit and keep focus
-vim.api.nvim_set_keymap('n', '<leader>b', '<cmd>vsplit<CR><cmd>lua vim.lsp.buf.definition()<CR><cmd>wincmd p<CR>', { noremap = true, silent = true })
+require('nvim-web-devicons').setup({ default = true, override = { zsh = { icon = "", color = "#428850", name = "Zsh" }, } })
 
 -- Feline status line setup
 local ctp_feline = require('catppuccin.groups.integrations.feline')
-
 ctp_feline.setup()
+require("feline").setup({ components = ctp_feline.get(), })
 
-require("feline").setup({
-    components = ctp_feline.get(),
-})
